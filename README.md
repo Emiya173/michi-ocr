@@ -78,14 +78,22 @@ Declarative home-manager setup — add the input and enable the module:
     enable = true;                       # nix package + systemd user service + config.toml
     port = 55000;
     settings = {
-      deepl_target_lang = "ZH";
+      translate_provider = "xfyun";      # iFlytek / 讯飞 (default), or "deepl"
+      xfyun_from = "ja";
+      xfyun_to = "cn";                   # NiuTrans uses "cn" for Chinese, not "zh"
       voicevox_url = "http://127.0.0.1:50021";
       speaker_id = 2;
       play_on_ocr = true;
     };
-    # Keep the DeepL key OUT of the world-readable nix store: point at a file containing
-    #   MICHI_OCR_DEEPL_API_KEY=xxxxxxxx:fx
-    deeplApiKeyFile = "/run/secrets/michi-ocr-deepl";   # e.g. sops-nix / agenix
+    # Keep API secrets OUT of the world-readable nix store. `secretsFile` is a systemd
+    # EnvironmentFile with any MICHI_OCR_<FIELD>=… overrides — here the 讯飞 credentials:
+    #   MICHI_OCR_XFYUN_APP_ID=...
+    #   MICHI_OCR_XFYUN_API_KEY=...
+    #   MICHI_OCR_XFYUN_API_SECRET=...
+    secretsFile = "/run/secrets/michi-ocr";             # e.g. sops-nix / agenix
+    # For DeepL instead: set translate_provider = "deepl" and point deeplApiKeyFile at a file
+    # containing MICHI_OCR_DEEPL_API_KEY=xxxxxxxx:fx
+    # deeplApiKeyFile = "/run/secrets/michi-ocr-deepl";
   };
 }
 ```
