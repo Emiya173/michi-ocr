@@ -33,6 +33,10 @@
         pkgs.freetype
         pkgs.libxkbcommon
         pkgs.wayland
+        # torch/ROCm wheel dlopen deps (the [local] Surya extra)
+        pkgs.zstd          # libzstd.so.1
+        pkgs.numactl       # libnuma.so.1
+        pkgs.elfutils      # libelf.so.1
       ] ++ gtkPkgs);
 
       # GI typelibs (Gtk-3.0, GtkLayerShell-0.1, ...) for the overlay. Gtk-3.0 pulls
