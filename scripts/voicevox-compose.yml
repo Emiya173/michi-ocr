@@ -1,0 +1,10 @@
+# Local VoiceVox engine (CPU image — VoiceVox GPU is CUDA-only, no AMD support).
+#   docker compose -f scripts/voicevox-compose.yml up -d
+# Then browse http://127.0.0.1:50021/speakers to pick a speaker_id for config.toml.
+services:
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-latest
+    container_name: michi-voicevox
+    ports:
+      - "127.0.0.1:50021:50021"
+    restart: unless-stopped
