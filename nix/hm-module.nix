@@ -72,6 +72,22 @@ in
       '';
     };
 
+    secretsFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      example = "/run/secrets/michi-ocr";
+      description = ''
+        Path to a systemd EnvironmentFile with any `MICHI_OCR_<FIELD>=<value>` overrides — the
+        place for the iFlytek / 讯飞 credentials so they stay out of the world-readable nix store:
+
+            MICHI_OCR_XFYUN_APP_ID=...
+            MICHI_OCR_XFYUN_API_KEY=...
+            MICHI_OCR_XFYUN_API_SECRET=...
+
+        Read at service start; env overrides take precedence over config.toml.
+      '';
+    };
+
     service = lib.mkOption {
       type = lib.types.bool;
       default = true;
@@ -105,7 +121,9 @@ in
           else
             lib.getExe cfg.package;
         WorkingDirectory = lib.mkIf (cfg.backend == "devshell") cfg.devshellPath;
-        EnvironmentFile = lib.mkIf (cfg.deeplApiKeyFile != null) [ (toString cfg.deeplApiKeyFile) ];
+        EnvironmentFile =
+          let files = lib.filter (f: f != null) [ cfg.deeplApiKeyFile cfg.secretsFile ];
+          in lib.mkIf (files != [ ]) (map toString files);
         Restart = "on-failure";
         RestartSec = 3;
       };

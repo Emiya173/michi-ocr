@@ -1,7 +1,7 @@
 # michi-ocr
 
 A small, Wayland-native tool for reading Japanese while playing games: select a screen
-region, and it OCRs the text, translates it (DeepL → Chinese), speaks the Japanese line
+region, and it OCRs the text, translates it (iFlytek / 讯飞 or DeepL → Chinese), speaks the Japanese line
 (VoiceVox), and shows a transparent overlay above the region that you can re-scan / re-read
 without alt-tabbing.
 
@@ -15,7 +15,7 @@ overlay pipeline only, with none of GSM's Anki / OBS / stats / Electron machiner
 niri keybind ──> scripts/michi-ocr.sh ──(grim PNG)──> daemon  /ocr-region
                   (slurp region)                         │
                                                           ├─ OCR   (Google Lens, Surya fallback)
-                                                          ├─ DeepL  translation (JA → ZH)
+                                                          ├─ 讯飞 / DeepL translation (JA → ZH)
                                                           ├─ VoiceVox TTS  (mpv subprocess)
                                                           └─ spawn layer-shell overlay
 ```
@@ -33,7 +33,7 @@ nix develop                      # builds .venv, installs deps, wires GTK/PyGObj
 python -m michi_ocr              # start the daemon (http://127.0.0.1:55000)
 ```
 
-Start VoiceVox and configure DeepL:
+Start VoiceVox and configure the translator:
 
 ```sh
 docker compose -f scripts/voicevox-compose.yml up -d
@@ -114,8 +114,20 @@ services.michi-ocr = {
 ## Config (`~/.config/michi-ocr/config.toml`)
 
 ```toml
-deepl_api_key = "xxxxxxxx:fx"   # required for translation
+# Translation provider: "xfyun" (iFlytek / 讯飞 NiuTrans, default) or "deepl"
+translate_provider = "xfyun"
+
+# --- iFlytek / 讯飞 (default) — credentials from https://console.xfyun.cn (机器翻译 niutrans)
+xfyun_app_id     = "xxxxxxxx"
+xfyun_api_key    = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+xfyun_api_secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+xfyun_from       = "ja"         # source lang ("auto" to auto-detect)
+xfyun_to         = "cn"         # NiuTrans uses "cn" for Chinese, not "zh"
+
+# --- DeepL (still supported; used when translate_provider = "deepl")
+deepl_api_key = "xxxxxxxx:fx"
 deepl_target_lang = "ZH"
+
 voicevox_url = "http://127.0.0.1:50021"
 speaker_id = 2                  # browse :50021/speakers
 play_on_ocr = true

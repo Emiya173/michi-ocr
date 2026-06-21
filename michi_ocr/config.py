@@ -23,6 +23,16 @@ class Config:
     # HTTP daemon
     port: int = 55000
 
+    # Translation: which backend to use — "xfyun" (iFlytek NiuTrans, default) | "deepl"
+    translate_provider: str = "xfyun"
+
+    # Translation (iFlytek / 讯飞 NiuTrans) — https://www.xfyun.cn/doc/nlp/niutrans/API.html
+    xfyun_app_id: str = ""
+    xfyun_api_key: str = ""
+    xfyun_api_secret: str = ""
+    xfyun_from: str = "ja"  # NiuTrans lang code; "auto" to let the server detect
+    xfyun_to: str = "cn"  # Chinese is "cn" in NiuTrans (not "zh")
+
     # Translation (DeepL)
     deepl_api_key: str = ""
     deepl_target_lang: str = "ZH"
@@ -38,6 +48,14 @@ class Config:
 
     def deepl_configured(self) -> bool:
         return bool(self.deepl_api_key.strip())
+
+    def xfyun_configured(self) -> bool:
+        return all(s.strip() for s in (self.xfyun_app_id, self.xfyun_api_key, self.xfyun_api_secret))
+
+    def translate_configured(self) -> bool:
+        """True when the *active* provider has the credentials it needs."""
+        provider = (self.translate_provider or "").strip().lower()
+        return self.deepl_configured() if provider == "deepl" else self.xfyun_configured()
 
 
 _BOOL_TRUE = {"1", "true", "yes", "on"}

@@ -22,9 +22,13 @@ def _setup_logging() -> None:
 def main() -> None:
     _setup_logging()
     cfg = config.get()
-    if not cfg.deepl_configured():
+    if not cfg.translate_configured():
+        provider = (cfg.translate_provider or "xfyun").strip().lower()
+        keys = "deepl_api_key" if provider == "deepl" else "xfyun_app_id/xfyun_api_key/xfyun_api_secret"
         logging.getLogger("michi_ocr").warning(
-            "No DeepL key set (deepl_api_key in %s) — OCR + TTS will work, translation stays blank.",
+            "No %s credentials set (%s in %s) — OCR + TTS will work, translation stays blank.",
+            provider,
+            keys,
             config.CONFIG_PATH,
         )
     daemon.serve(cfg)
