@@ -32,6 +32,15 @@ _MESSAGE_TO_DICT = _UNINITIALIZED
 
 _PROTO_PKG = "michi_ocr.ocr.lens_protos"
 
+# The public Google Lens API key that Chromium ships and that owocr / chrome-lens-ocr reuse
+# (the whole request impersonates Chrome). It is NOT a personal/secret credential — it's
+# already public in Chromium's source and many repos. Override with MICHI_OCR_LENS_API_KEY.
+_DEFAULT_LENS_API_KEY = "AIzaSyDr2UxVnv_U85AbhhY8XSHSIavUW0DC-sY"
+
+
+def _lens_api_key() -> str:
+    return os.environ.get("MICHI_OCR_LENS_API_KEY") or _DEFAULT_LENS_API_KEY
+
 
 def _load_lens_proto_dependencies():
     """Import the generated Lens protobuf messages (cached). None if protobuf is missing."""
@@ -222,7 +231,7 @@ class GoogleLens:
                 "Host": "lensfrontend-pa.googleapis.com",
                 "Connection": "keep-alive",
                 "Content-Type": "application/x-protobuf",
-                "X-Goog-Api-Key": "AIzaSyDr2UxVnv_U85AbhhY8XSHSIavUW0DC-sY",
+                "X-Goog-Api-Key": _lens_api_key(),
                 "Sec-Fetch-Site": "none",
                 "Sec-Fetch-Mode": "no-cors",
                 "Sec-Fetch-Dest": "empty",

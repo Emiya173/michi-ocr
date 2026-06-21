@@ -125,6 +125,10 @@ port = 55000
 Every field can also be overridden by an env var: `MICHI_OCR_<FIELD>` (e.g.
 `MICHI_OCR_PORT=7000`). Unlike GSM, nothing rewrites this file behind your back.
 
+The Google Lens request uses the public Chromium-shipped Lens API key by default (same one
+owocr / chrome-lens-ocr use — not a personal credential). Override it with
+`MICHI_OCR_LENS_API_KEY` if you'd rather supply your own.
+
 ## Offline OCR (`[local]` extra, AMD/ROCm)
 
 Surya needs torch. On an AMD GPU (e.g. RX 9070 XT / RDNA4 / gfx1201) install the ROCm wheel —
