@@ -33,8 +33,10 @@ def _resolve_player() -> list[str] | None:
     if _player_resolved:
         return _player_cmd
     for exe, argv in (
-        ("mpv", ["mpv", "--no-video", "--no-terminal", "--really-quiet", "--audio-display=no"]),
-        ("ffplay", ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet"]),
+        # --no-config: ignore the user's mpv.conf — a common `keep-open=yes` makes mpv idle at
+        # EOF instead of exiting, which hangs playback until the timeout (and blocks the lock).
+        ("mpv", ["mpv", "--no-config", "--no-video", "--no-terminal", "--really-quiet"]),
+        ("ffplay", ["ffplay", "-nodisp", "-autoexit", "-nostdin", "-loglevel", "quiet"]),
         ("paplay", ["paplay"]),
         ("aplay", ["aplay", "-q"]),
     ):
@@ -87,7 +89,17 @@ def play(text: str, cfg: Config, speaker_id: int | None = None) -> None:
             path = f.name
         with _play_lock:  # one line finishes before the next starts (no overlap, no 2 streams)
             try:
-                subprocess.run([*player, path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
+                # stdin detached so a player never blocks reading it; timeout is a safety net so a
+                # stuck player can't hold the lock (and thus all later lines) for long.
+                subprocess.run(
+                    [*player, path],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=30,
+                )
+            except subprocess.TimeoutExpired:
+                logger.error(f"TTS player did not exit within 30s (killed): {player[0]}")
             except Exception as e:  # noqa: BLE001
                 logger.error(f"TTS playback failed: {e}")
             finally:
