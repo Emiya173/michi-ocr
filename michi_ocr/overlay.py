@@ -11,9 +11,12 @@ Run as a subprocess of the daemon (inherits the nix GTK/GI env):
 
 Controls (mouse works without stealing the game's keyboard):
   * Left-click / r / Space  -> re-OCR the same region (re-fires TTS + translation)
+  * Arrow keys              -> move the window (hold Shift for larger steps)
   * t                       -> re-speak the current line (no re-OCR / translate)
   * m                       -> toggle TTS for this window (re-scans then pass ?tts=0)
   * Right-click / Esc       -> close
+
+Keyboard controls need the box focused (layer-shell ON_DEMAND) — click it once first.
 """
 
 from __future__ import annotations
@@ -84,6 +87,8 @@ class Overlay:
             self.mon_x, self.mon_y = mgeo.x, mgeo.y
         else:
             self.mon_x, self.mon_y = 0, 0
+        self.off_x = 0  # arrow-key nudge from the auto-anchored position (logical px)
+        self.off_y = 0
         GtkLayerShell.set_anchor(self.win, GtkLayerShell.Edge.TOP, True)
         GtkLayerShell.set_anchor(self.win, GtkLayerShell.Edge.LEFT, True)
         GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.LEFT, max(0, self.x - self.mon_x))
@@ -124,7 +129,9 @@ class Overlay:
 
     def _update_hint(self) -> None:
         tts = "开" if self.tts_enabled else "关"
-        self.hint.set_text(f"左键 / r: 重扫    t: 重读    m: TTS[{tts}]    右键 / Esc: 关闭")
+        self.hint.set_text(
+            f"方向键: 移动 (Shift 大步)    左键 / r: 重扫    t: 重读    m: TTS[{tts}]    右键 / Esc: 关闭"
+        )
 
     def set_content(self, text: str, translation: str, error: str = "") -> None:
         self.text = text or ""
@@ -132,13 +139,15 @@ class Overlay:
         self.zh_label.set_text(translation or error or "（无翻译）")
 
     def _reposition(self) -> None:
-        # Anchor the box just above the region; drop below if there's no room at the top of the
-        # output. All coords are global; margins are relative to the output origin (mon_y).
+        # Anchor the box just above the region (drop below if there's no room at the top of the
+        # output), then apply the user's arrow-key nudge. All coords are global; margins are
+        # relative to the output origin (mon_x/mon_y).
         bh = self.box.get_allocated_height()
         top = self.y - bh - 8
         if top < self.mon_y:
             top = self.y + self.h + 8
-        GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.TOP, max(0, top - self.mon_y))
+        GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.LEFT, max(0, self.x - self.mon_x + self.off_x))
+        GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.TOP, max(0, top - self.mon_y + self.off_y))
 
     def _on_click(self, _w, event) -> bool:
         if event.button == 1:
@@ -158,6 +167,17 @@ class Overlay:
         elif key in (Gdk.KEY_m, Gdk.KEY_M):
             self.tts_enabled = not self.tts_enabled
             self._update_hint()
+        elif key in (Gdk.KEY_Left, Gdk.KEY_Right, Gdk.KEY_Up, Gdk.KEY_Down):
+            step = 100 if (event.state & Gdk.ModifierType.SHIFT_MASK) else 20
+            if key == Gdk.KEY_Left:
+                self.off_x -= step
+            elif key == Gdk.KEY_Right:
+                self.off_x += step
+            elif key == Gdk.KEY_Up:
+                self.off_y -= step
+            else:
+                self.off_y += step
+            self._reposition()
         return True
 
     def _replay_tts(self) -> None:

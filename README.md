@@ -22,8 +22,8 @@ niri keybind ──> scripts/michi-ocr.sh ──(grim PNG)──> daemon  /ocr-r
 
 - **OCR**: Google Lens (network, fast, accurate) first; if it fails/stalls (offline), a local
   **Surya** torch model (the `[local]` extra) is used. Set `MICHI_OCR_RACE=1` to race them.
-- **Overlay** controls: left-click / `r` / `Space` re-scan · `t` re-read · `m` toggle TTS ·
-  right-click / `Esc` close.
+- **Overlay** controls: left-click / `r` / `Space` re-scan · arrow keys move (Shift = larger
+  step) · `t` re-read · `m` toggle TTS · right-click / `Esc` close.
 
 ## Setup (NixOS)
 
