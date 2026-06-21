@@ -48,6 +48,69 @@ binds {
 }
 ```
 
+## Reproducible install (flake + home-manager)
+
+The flake exposes a **`packages.default`** (a reproducible nix build of the core / Lens path —
+all deps from nixpkgs) and a **`homeManagerModules.default`**.
+
+Run it directly without cloning:
+
+```sh
+nix run github:Emiya173/michi-ocr            # start the daemon
+nix run github:Emiya173/michi-ocr#default -- # same
+```
+
+Declarative home-manager setup — add the input and enable the module:
+
+```nix
+# flake.nix
+{
+  inputs.michi-ocr.url = "github:Emiya173/michi-ocr";
+  # ... pass `inputs` through to home-manager ...
+}
+
+# home.nix
+{ inputs, ... }:
+{
+  imports = [ inputs.michi-ocr.homeManagerModules.default ];
+
+  services.michi-ocr = {
+    enable = true;                       # nix package + systemd user service + config.toml
+    port = 55000;
+    settings = {
+      deepl_target_lang = "ZH";
+      voicevox_url = "http://127.0.0.1:50021";
+      speaker_id = 2;
+      play_on_ocr = true;
+    };
+    # Keep the DeepL key OUT of the world-readable nix store: point at a file containing
+    #   MICHI_OCR_DEEPL_API_KEY=xxxxxxxx:fx
+    deeplApiKeyFile = "/run/secrets/michi-ocr-deepl";   # e.g. sops-nix / agenix
+  };
+}
+```
+
+`michi-ocr-trigger` (the niri keybind target) lands on your `$PATH`:
+
+```kdl
+binds { Mod+Shift+T { spawn "michi-ocr-trigger"; } }
+```
+
+### Offline OCR (Surya) with the module
+
+The nix package is the **Lens core only** (ROCm torch isn't reproducibly in nixpkgs). To use
+the local Surya fallback, point the module at a local checkout and switch the backend — the
+service then runs `nix develop <path> --command python -m michi_ocr`, picking up the `[local]`
+extra you installed into that checkout's `.venv` (see *Offline OCR* below):
+
+```nix
+services.michi-ocr = {
+  enable = true;
+  backend = "devshell";
+  devshellPath = "%h/dev/michi-ocr";
+};
+```
+
 ## Config (`~/.config/michi-ocr/config.toml`)
 
 ```toml

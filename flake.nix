@@ -48,6 +48,12 @@
       ];
     in
     {
+      # Reproducible nix build of the core (Lens) path. `nix run` / home-manager use this.
+      packages.${system}.default = pkgs.callPackage ./nix/package.nix { };
+
+      # Home Manager module: `services.michi-ocr.enable = true;`. See nix/hm-module.nix.
+      homeManagerModules.default = import ./nix/hm-module.nix self;
+
       devShells.${system}.default = pkgs.mkShell {
         packages = with pkgs; [
           (py.withPackages (ps: [ ps.pip ]))
