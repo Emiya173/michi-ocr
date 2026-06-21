@@ -71,10 +71,23 @@ class Overlay:
         # ON_DEMAND so we don't grab the game's keyboard; box-sized so only the box intercepts
         # the pointer — clicks elsewhere reach the game.
         GtkLayerShell.set_keyboard_mode(self.win, GtkLayerShell.KeyboardMode.ON_DEMAND)
+        # Multi-monitor: pin the surface to the output that contains the region, and use margins
+        # RELATIVE to that output's origin. Without set_monitor, layer-shell picks a default
+        # output and our global (slurp) coords become wrong there — on a secondary monitor the
+        # margin lands off-screen and the window is invisible (while TTS still fired). slurp/grim
+        # and Gdk monitor geometry are both in logical compositor coords, so no scaling math.
+        display = Gdk.Display.get_default()
+        monitor = display.get_monitor_at_point(self.x, self.y) if display else None
+        if monitor is not None:
+            GtkLayerShell.set_monitor(self.win, monitor)
+            mgeo = monitor.get_geometry()
+            self.mon_x, self.mon_y = mgeo.x, mgeo.y
+        else:
+            self.mon_x, self.mon_y = 0, 0
         GtkLayerShell.set_anchor(self.win, GtkLayerShell.Edge.TOP, True)
         GtkLayerShell.set_anchor(self.win, GtkLayerShell.Edge.LEFT, True)
-        GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.LEFT, max(0, self.x))
-        GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.TOP, max(0, self.y))
+        GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.LEFT, max(0, self.x - self.mon_x))
+        GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.TOP, max(0, self.y - self.mon_y))
 
         self.win.set_app_paintable(True)
         visual = Gdk.Screen.get_default().get_rgba_visual()
@@ -119,11 +132,13 @@ class Overlay:
         self.zh_label.set_text(translation or error or "（无翻译）")
 
     def _reposition(self) -> None:
+        # Anchor the box just above the region; drop below if there's no room at the top of the
+        # output. All coords are global; margins are relative to the output origin (mon_y).
         bh = self.box.get_allocated_height()
         top = self.y - bh - 8
-        if top < 0:
+        if top < self.mon_y:
             top = self.y + self.h + 8
-        GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.TOP, max(0, top))
+        GtkLayerShell.set_margin(self.win, GtkLayerShell.Edge.TOP, max(0, top - self.mon_y))
 
     def _on_click(self, _w, event) -> bool:
         if event.button == 1:

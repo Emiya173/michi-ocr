@@ -11,6 +11,7 @@ import logging
 import os
 import subprocess
 import sys
+import time
 
 from michi_ocr import translate, tts
 from michi_ocr.config import LOG_DIR, Config
@@ -61,8 +62,8 @@ def spawn_overlay(geometry: str, text: str, translation: str, port: int) -> None
     log_path = LOG_DIR / "overlay.log"
     logger.info(f"Spawning overlay (geometry={geometry!r}); stderr -> {log_path}")
     try:
-        logf = open(log_path, "wb")
-        logf.write(f"--- spawn: {' '.join(cmd)}\n".encode())
+        logf = open(log_path, "ab")  # append, not truncate — keep prior spawns' crash output
+        logf.write(f"--- spawn @ {time.strftime('%H:%M:%S')}: {' '.join(cmd)}\n".encode())
         logf.flush()
         subprocess.Popen(cmd, env=env, stdout=logf, stderr=subprocess.STDOUT)
     except Exception as e:  # noqa: BLE001
