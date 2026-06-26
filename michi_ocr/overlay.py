@@ -220,9 +220,10 @@ class Overlay:
         if png.returncode != 0:
             return "", "", f"grim 失败: {png.stderr.decode('utf-8', 'replace')[:80]}"
 
-        params = {"geometry": self.geometry, "spawn_overlay": "0"}
-        if not self.tts_enabled:
-            params["tts"] = "0"
+        # Send the toggle state explicitly: "1" so rescans speak even when the daemon's
+        # play_on_ocr default is off; "0" to stay silent. (Just omitting it falls back to
+        # play_on_ocr, which is why 开 used to stay silent.)
+        params = {"geometry": self.geometry, "spawn_overlay": "0", "tts": "1" if self.tts_enabled else "0"}
         q = urllib.parse.urlencode(params)
         proc = subprocess.run(
             [
