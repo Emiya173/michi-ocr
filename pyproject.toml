@@ -19,6 +19,11 @@ local = [
     "surya-ocr==0.15.4",
     "transformers>=4.51,<4.54",
     "tokenizers>=0.21,<0.22",
+    # torch 走 [tool.uv.sources] 的 ROCm 索引;==2.9.1 匹配 2.9.1+rocm6.4 (gfx1201/RDNA4)。
+    "torch==2.9.1",
+    # torch 的 triton 依赖只在 ROCm 索引、不在 PyPI;显式列为直接依赖,uv.sources 才会
+    # 把它也指到该索引(sources 对传递依赖不保证生效)。
+    "pytorch-triton-rocm==3.5.1",
 ]
 dev = [
     "ruff",
@@ -30,6 +35,22 @@ michi-ocr = "michi_ocr.__main__:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv]
+# devShell 传 --python 指向 nixpkgs cpython;别去下 python-build-standalone。
+python-preference = "system"
+
+# torch / triton 只从 PyTorch 的 ROCm 索引取(gfx1201/RDNA4 需要 rocm6.4 轮子,
+# nixpkgs 无、PyPI 也只有 CUDA/CPU 版)。explicit=true ⇒ 仅下面 sources 指名的包走这里,
+# 其余照常 PyPI。
+[tool.uv.sources]
+torch = { index = "pytorch-rocm" }
+pytorch-triton-rocm = { index = "pytorch-rocm" }
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.4"
+explicit = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["michi_ocr"]

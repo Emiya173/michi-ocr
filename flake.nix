@@ -80,15 +80,20 @@
           export GI_TYPELIB_PATH=${giTypelibPath}''${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}
           export PYTHONPATH=${pyGiPath}
 
-          if [ ! -d .venv ]; then
-            uv venv --python ${py}/bin/python3
-            . .venv/bin/activate
-            uv pip install -e ".[dev]"
+          # Reproducible installs come straight from uv.lock (uv sync --frozen; never resolves
+          # the network). The heavy [local]/Surya extra (torch 2.9.1+rocm6.4, gfx1201/RDNA4) is
+          # opt-in via MICHI_OCR_SURYA=1 and lands in its OWN venv, so the default Lens-only shell
+          # never carries torch and the two never prune each other.
+          if [ -n "''${MICHI_OCR_SURYA:-}" ]; then
+            export UV_PROJECT_ENVIRONMENT=.venv
+            uv sync --frozen --extra dev --extra local --python ${py}/bin/python3
           else
-            . .venv/bin/activate
+            export UV_PROJECT_ENVIRONMENT=.venv-lens
+            uv sync --frozen --extra dev --python ${py}/bin/python3
           fi
+          . "$UV_PROJECT_ENVIRONMENT/bin/activate"
 
-          echo "michi-ocr dev shell ready. Run 'python -m michi_ocr' to start the daemon."
+          echo "michi-ocr dev shell ready (venv: $UV_PROJECT_ENVIRONMENT''${MICHI_OCR_SURYA:+, Surya}). Run 'python -m michi_ocr'."
         '';
       };
     };

@@ -29,9 +29,16 @@ niri keybind ──> scripts/michi-ocr.sh ──(grim PNG)──> daemon  /ocr-r
 
 ```sh
 cd ~/dev/michi-ocr
-nix develop                      # builds .venv, installs deps, wires GTK/PyGObject
+nix develop                      # .venv-lens, deps frozen from uv.lock, GTK/PyGObject wired (Lens only)
 python -m michi_ocr              # start the daemon (http://127.0.0.1:55000)
+
+# offline Surya fallback (torch/ROCm) is opt-in and lands in its own .venv:
+MICHI_OCR_SURYA=1 nix develop
 ```
+
+`nix develop` installs **`--frozen` from `uv.lock`** (no network resolution) — pinning is the
+reproducibility boundary. The light shell (`.venv-lens`) never carries torch; `MICHI_OCR_SURYA=1`
+selects a separate `.venv` with the `[local]` Surya stack so the two don't prune each other.
 
 Start VoiceVox and configure the translator:
 
@@ -106,16 +113,27 @@ binds { Mod+Shift+T { spawn "michi-ocr-trigger"; } }
 
 ### Offline OCR (Surya) with the module
 
-The nix package is the **Lens core only** (ROCm torch isn't reproducibly in nixpkgs). To use
-the local Surya fallback, point the module at a local checkout and switch the backend — the
-service then runs `nix develop <path> --command python -m michi_ocr`, picking up the `[local]`
-extra you installed into that checkout's `.venv` (see *Offline OCR* below):
+The nix package is the **Lens core only** (ROCm torch isn't reproducibly in nixpkgs). For the
+offline **Surya** fallback, run the daemon from a local checkout's devshell, which installs the
+`[local]` extra **frozen from `uv.lock`** (torch 2.9.1+rocm6.4) — but only when `MICHI_OCR_SURYA=1`
+is in the environment:
 
 ```nix
 services.michi-ocr = {
   enable = true;
   backend = "devshell";
   devshellPath = "%h/dev/michi-ocr";
+};
+```
+
+The module's `devshell` backend runs `nix develop <path> --command python -m michi_ocr` **without**
+that flag, so it gets the light Lens venv. To autostart *with* Surya, drive the devshell from your
+own user service that sets the env:
+
+```nix
+systemd.user.services.michi-ocr.Service = {
+  Environment = "MICHI_OCR_SURYA=1";
+  ExecStart = "${pkgs.nix}/bin/nix develop %h/dev/michi-ocr --command python -m michi_ocr";
 };
 ```
 
@@ -151,20 +169,23 @@ owocr / chrome-lens-ocr use — not a personal credential). Override it with
 
 ## Offline OCR (`[local]` extra, AMD/ROCm)
 
-Surya needs torch. On an AMD GPU (e.g. RX 9070 XT / RDNA4 / gfx1201) install the ROCm wheel —
-the default index pulls the CUDA build:
+Surya needs torch. The `[local]` extra pins it to the ROCm wheel (`torch==2.9.1` →
+`2.9.1+rocm6.4`) via `[tool.uv.sources]`, so it's locked in `uv.lock` — no imperative install.
+Just enter the Surya devshell (its own `.venv`, synced `--frozen` from the lock):
 
 ```sh
-.venv/bin/uv pip install --index-strategy unsafe-best-match \
-  --index-url https://download.pytorch.org/whl/rocm6.4 \
-  --extra-index-url https://pypi.org/simple "torch==2.9.1+rocm6.4"
-.venv/bin/uv pip install -e ".[local]"
+MICHI_OCR_SURYA=1 nix develop
+python -m michi_ocr
 ```
 
-Notes: RDNA4 needs **ROCm 6.4+**; the **first** Surya inference JIT-compiles MIOpen kernels
-for the new arch (one-time, can take a long while, cached in `~/.cache/miopen`). Force CPU
-with `MICHI_OCR_FORCE_CPU=1`. Use `.venv/bin/...` directly — `uv run` re-syncs from the lock
-and reverts these imperative installs.
+(`pytorch-triton-rocm` is listed as a direct dep on purpose — it's not on PyPI and `uv`'s
+`[tool.uv.sources]` only reroutes *direct* deps, so otherwise `uv lock` can't find it.)
+
+Notes: RDNA4 (RX 9070 XT / gfx1201) needs **ROCm 6.4+**; the **first** Surya inference
+JIT-compiles MIOpen kernels for the new arch (one-time, can take a long while, cached in
+`~/.cache/miopen`). Force CPU with `MICHI_OCR_FORCE_CPU=1`.
+
+Bumping torch/Surya: edit the pins in `pyproject.toml`, run `uv lock`, commit `uv.lock`.
 
 ## Endpoints
 
