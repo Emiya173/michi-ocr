@@ -1,6 +1,6 @@
 [project]
 name = "michi-ocr"
-version = "0.1.0"
+version = "0.2.0"
 description = "Wayland-native OCR -> translate -> speak -> overlay tool for learning Japanese"
 readme = "README.md"
 requires-python = ">=3.11"

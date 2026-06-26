@@ -17,7 +17,7 @@
 # wired via wrapGAppsHook3 (the daemon's env is inherited by the overlay subprocess).
 python3Packages.buildPythonApplication rec {
   pname = "michi-ocr";
-  version = "0.1.0";
+  version = "0.2.0";
   pyproject = true;
 
   src = ../.;
