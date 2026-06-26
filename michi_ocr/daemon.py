@@ -87,7 +87,14 @@ class Handler(BaseHTTPRequestHandler):
                 port = int(_q1("port") or self._cfg.port)
             except (TypeError, ValueError):
                 port = self._cfg.port
-            pipeline.spawn_overlay(geometry, result["text"], result.get("translation", ""), port)
+            # Overlay's initial TTS toggle mirrors what auto-play would do this request, so the
+            # hint shows 关 and rescans stay silent when play_on_ocr (or ?tts=0) is off.
+            tts_default = self._cfg.tts_enabled and (
+                self._cfg.play_on_ocr if play_tts is None else play_tts
+            )
+            pipeline.spawn_overlay(
+                geometry, result["text"], result.get("translation", ""), port, tts_default=tts_default
+            )
         self._json(result, 200)
 
     def _handle_tts_play(self) -> None:

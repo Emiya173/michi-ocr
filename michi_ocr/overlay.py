@@ -56,11 +56,13 @@ def _parse_geometry(geom: str) -> tuple[int, int, int, int]:
 
 
 class Overlay:
-    def __init__(self, geometry: str, port: int, text: str, translation: str):
+    def __init__(self, geometry: str, port: int, text: str, translation: str, tts_enabled: bool = True):
         self.geometry = geometry
         self.port = port
         self.x, self.y, self.w, self.h = _parse_geometry(geometry)
-        self.tts_enabled = True
+        # Initial toggle state comes from the daemon (config), not hard-coded — so the hint
+        # shows TTS[关] and rescans don't auto-speak when play_on_ocr is off.
+        self.tts_enabled = tts_enabled
 
         provider = Gtk.CssProvider()
         provider.load_from_data(CSS)
@@ -290,8 +292,11 @@ def main() -> None:
     p.add_argument("--port", type=int, default=55000)
     p.add_argument("--text", default="")
     p.add_argument("--translation", default="")
+    p.add_argument("--tts-default", choices=["0", "1"], default="1",
+                   help="initial TTS toggle state (rescans auto-speak when 1)")
     args = p.parse_args()
-    Overlay(args.geometry, args.port, args.text, args.translation).run()
+    Overlay(args.geometry, args.port, args.text, args.translation,
+            tts_enabled=args.tts_default == "1").run()
 
 
 if __name__ == "__main__":

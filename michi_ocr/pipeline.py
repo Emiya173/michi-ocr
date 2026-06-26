@@ -40,7 +40,7 @@ def run_ocr_region(img_bytes: bytes, cfg: Config, play_tts: bool | None = None) 
     }
 
 
-def spawn_overlay(geometry: str, text: str, translation: str, port: int) -> None:
+def spawn_overlay(geometry: str, text: str, translation: str, port: int, tts_default: bool = True) -> None:
     """Launch the layer-shell overlay as a subprocess (inherits the nix GTK/GI env)."""
     cmd = [
         sys.executable,
@@ -54,6 +54,8 @@ def spawn_overlay(geometry: str, text: str, translation: str, port: int) -> None
         text,
         "--translation",
         translation,
+        "--tts-default",
+        "1" if tts_default else "0",
     ]
     # The child needs the same sys.path (nix PyGObject + this package) to `import gi`.
     env = os.environ.copy()
